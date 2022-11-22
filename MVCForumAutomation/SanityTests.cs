@@ -1,12 +1,25 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-using System.Collections.Generic;
 
 namespace MVCForumAutomation
 {
     [TestClass]
     public class SanityTests
     {
+        public SanityTests()
+        {
+            TestDefaults = new TestDefaults();
+            MVCForum = new MVCForumClient(TestDefaults);
+        }
+
+        [TestInitialize]
+        public void TestInitialize()
+        {
+            var adminUser = MVCForum.LoginAsAdmin();
+            var adminPage = adminUser.GoToAdminPage();
+            var permissions = adminPage.GetPermissionsFor(TestDefaults.StandardMembers);
+            permissions.AddCategory(TestDefaults.ExampleCategory, PermissionTypes.CreateTopics);
+            adminUser.Logout();
+        }
 
         [TestMethod]
         public void WhenARegisteredUserStartsADiscussionOtherAnonymousUsersCanSeeIt()
@@ -15,7 +28,7 @@ namespace MVCForumAutomation
             var userA = MVCForum.RegisterNewUserAndLogin();
             var createdDiscussion = userA.CreateDiscussion(Discussion.With.Body(body));
 
-            var anonymousUser = new MVCForumClient();
+            var anonymousUser = OpenNewMVCForumClient();
             var latestHeader = anonymousUser.LatestDiscussions.Top;
             Assert.AreEqual(createdDiscussion.Title, latestHeader.Title,
                 "The title of the latest discussion should match the one we created");
@@ -23,9 +36,14 @@ namespace MVCForumAutomation
             Assert.AreEqual(body, viewedDiscussion.Body,
                 "The bod○y of the latest discussion should match the one we created");
         }
-        public MVCForumClient MVCForum
+
+        private MVCForumClient OpenNewMVCForumClient()
         {
-            get { throw new NotImplementedException(); }
+            return new MVCForumClient(TestDefaults);
         }
+
+        public TestDefaults TestDefaults { get; }
+
+        public MVCForumClient MVCForum { get; }
     }
 }
